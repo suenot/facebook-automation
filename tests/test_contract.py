@@ -15,13 +15,13 @@ from facebook_automation.media import copy_video, read_caption
 from facebook_automation.service import accept_ui, normalized, publish, reconcile
 from facebook_automation.state import State, canonical, profile_url
 
-PAGE = "https://www.facebook.com/caribbeanawesome"
+PROFILE = "https://www.facebook.com/caribbeanawesome"
 NAME = "Caribbean Awesome"
 POST = "https://www.facebook.com/reel/123456789"
 
 
 def candidate():
-    return {"schema_version": "1.0.0", "target": {"kind": "page", "page_url": PAGE, "display_name": NAME},
+    return {"schema_version": "1.0.0", "target": {"kind": "profile", "profile_url": PROFILE, "display_name": NAME},
             "editor_url": "https://www.facebook.com/reels/create",
             "selectors": {key: "#" + key for key in SELECTORS},
             "steps_before_caption": [], "steps_after_caption": []}
@@ -55,7 +55,7 @@ class Adapter:
         diagnostics.mkdir(parents=True, exist_ok=True)
 
     async def open_editor(self, account):
-        assert account["page_url"] == PAGE and account["display_name"] == NAME
+        assert account["profile_url"] == PROFILE and account["display_name"] == NAME
 
     async def existing_urls(self):
         return {"https://www.facebook.com/reel/111"}
@@ -67,7 +67,7 @@ class Adapter:
 
     async def verify(self, account, caption, privacy):
         if self.failure == "verify":
-            raise PublishError("ACCOUNT_MISMATCH", "Wrong Page")
+            raise PublishError("ACCOUNT_MISMATCH", "Wrong profile")
         if self.failure == "privacy":
             raise PublishError("PRIVACY_MISMATCH", "Not Public", 3)
 
@@ -100,7 +100,7 @@ def state(tmp_path, monkeypatch):
     monkeypatch.setattr(service, "probe_video", lambda _: None)
     Adapter.clicks, Adapter.failure, Adapter.uploaded, Adapter.state, Adapter.seen_privacy = 0, None, None, None, None
     state = State(tmp_path / "state")
-    state.bind("brand", PAGE, NAME)
+    state.bind("brand", PROFILE, NAME)
     state.accept_ui("brand", {"adapter_revision": ADAPTER_REVISION, "runtime": RUNTIME,
                               "evidence_sha256": "fixture", "contract": candidate()})
     return state
@@ -171,12 +171,12 @@ def test_cross_process_lock(state):
 
 
 def test_canonical_page_and_alias_cannot_rebind(state):
-    assert profile_url("https://facebook.com/CaribbeanAwesome/") == PAGE
+    assert profile_url("https://facebook.com/CaribbeanAwesome/") == PROFILE
     assert profile_url("https://facebook.com/profile.php?id=123") == "https://www.facebook.com/profile.php?id=123"
     with pytest.raises(PublishError):
         state.bind("brand", "https://www.facebook.com/personal", "Someone else")
     with pytest.raises(PublishError):
-        state.bind("other-alias", PAGE, NAME)
+        state.bind("other-alias", PROFILE, NAME)
     with pytest.raises(PublishError):
         profile_url("https://www.facebook.com/reel/123")
 

@@ -9,15 +9,16 @@ import shutil
 import sys
 import tempfile
 
-from .browser import ADAPTER_REVISION, RUNTIME, FacebookReels, accepted_contract, browser_session, load_contract
+from .browser import ADAPTER_REVISION, RUNTIME, FacebookReels, accepted_contract, browser_session, load_contract, verify_personal_login
 from .errors import PublishError
+from .firefox_cookies import firefox_cookies
 from .media import copy_video, probe_video, read_caption
 from .state import State, canonical, result
 
 
 def normalized(args):
     if args.privacy != "public":
-        raise PublishError("INVALID_PRIVACY", "Only explicitly requested public Page Reels are supported.")
+        raise PublishError("INVALID_PRIVACY", "Only explicitly requested public personal Reels are supported.")
     return {"type": "reel", "video": str(Path(args.video).expanduser().absolute()),
             "caption_file": str(Path(args.caption_file).expanduser().absolute()) if args.caption_file else None,
             "metadata_file": str(Path(args.metadata_file).expanduser().absolute()) if args.metadata_file else None,
@@ -138,22 +139,45 @@ async def wait_for_enter():
         loop.remove_reader(descriptor)
 
 
-async def login(state: State, args, session_factory=browser_session, adapter_factory=FacebookReels):
-    expected = {"page_url": args.page_url, "display_name": args.display_name}
-    contract = load_contract(args.ui_contract, expected)
+async def login(state: State, args, session_factory=browser_session):
+    expected = {"profile_url": args.profile_url, "display_name": args.display_name}
+    if not args.display_name.strip():
+        raise PublishError("INVALID_DISPLAY_NAME", "Expected profile display name must be nonempty.")
     with state.lock(args.account):
-        async with asyncio.timeout(args.timeout_seconds):
-            async with session_factory(state.profile(args.account), False) as context:
-                adapter = adapter_factory(context, contract, state.root / "accounts" / args.account / "diagnostics")
-                adapter.page = await context.new_page()
-                await adapter.page.goto(expected["page_url"], wait_until="domcontentloaded")
-                print("Sign in, finish 2FA and switch to the explicitly requested Page in Camoufox. Press Enter here when ready.", file=sys.stderr)
-                await wait_for_enter()
-                try:
-                    await adapter.verify_identity(expected)
-                    state.bind(args.account, expected["page_url"], expected["display_name"])
-                except BaseException as exc:
-                    raise await diagnostic_error(exc, adapter, False) from exc
+        profile = state.profile(args.account)
+        cookies = None
+        if args.import_firefox:
+            if any(profile.iterdir()):
+                raise PublishError("FIREFOX_IMPORT_CONFLICT", "Import requires an unused Camoufox profile; keep existing sessions and use a fresh state directory.")
+            cookies = firefox_cookies(args.import_firefox)
+        try:
+            async with asyncio.timeout(args.timeout_seconds):
+                async with session_factory(profile, False) as context:
+                    try:
+                        if cookies is not None:
+                            try:
+                                await context.add_cookies(cookies)
+                            except Exception:
+                                raise PublishError("FIREFOX_COOKIE_IMPORT_FAILED", "Camoufox could not accept the Firefox cookie snapshot; no profile was bound.") from None
+                        else:
+                            page = await context.new_page()
+                            await page.goto("https://www.facebook.com/me", wait_until="domcontentloaded")
+                            print("Sign in to the requested personal profile in Camoufox, then press Enter here.", file=sys.stderr)
+                            await wait_for_enter()
+                            await page.close()
+                        await verify_personal_login(context, expected)
+                    except BaseException:
+                        if cookies is not None:
+                            try:
+                                await context.clear_cookies()
+                            except Exception:
+                                pass
+                        raise
+            state.bind(args.account, expected["profile_url"], expected["display_name"])
+        except BaseException:
+            if cookies is not None:
+                cleanup_temporary(profile)
+            raise
         return {"platform": "facebook", "account": args.account, "status": "authenticated", "error": None}, 0
 
 

@@ -32,10 +32,10 @@ def request_id(value: str) -> str:
 
 
 def profile_url(value: str) -> str:
-    """Accept a canonical Facebook identity, never a public post or redirect."""
+    """Accept a canonical personal Facebook profile, never a post or redirect."""
     url = urlsplit(value)
     if url.scheme != "https" or url.netloc.lower() not in {"facebook.com", "www.facebook.com"} or url.fragment:
-        raise PublishError("INVALID_PAGE_URL", "Use an HTTPS facebook.com Page handle or numeric profile.php?id URL.")
+        raise PublishError("INVALID_PROFILE_URL", "Use an HTTPS facebook.com profile handle or numeric profile.php?id URL.")
     if url.path == "/profile.php":
         query = parse_qs(url.query, keep_blank_values=True)
         if set(query) == {"id"} and len(query["id"]) == 1 and re.fullmatch(r"\d+", query["id"][0]):
@@ -44,7 +44,7 @@ def profile_url(value: str) -> str:
     reserved = {"reel", "reels", "watch", "login", "pages", "groups", "settings", "me", "home.php", "profile.php"}
     if not url.query and re.fullmatch(r"[A-Za-z0-9.]+", handle) and handle.lower() not in reserved:
         return "https://www.facebook.com/" + handle.lower()
-    raise PublishError("INVALID_PAGE_URL", "Use the exact canonical Page URL, without a post path or tracking query.")
+    raise PublishError("INVALID_PROFILE_URL", "Use the exact canonical personal profile URL, without a post path or tracking query.")
 
 
 def canonical(value) -> str:
@@ -56,9 +56,12 @@ class State:
         self.root = private_dir(root)
         self.db_path = self.root / "journal.sqlite3"
         with self.connect() as db:
+            legacy = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='accounts'").fetchone()
+            if legacy and "page_url" in {row[1] for row in db.execute("PRAGMA table_info(accounts)")}:
+                raise PublishError("LEGACY_PAGE_STATE", "This state directory belongs to the old Page publisher. Use a fresh state directory for personal-profile Reels.", 3)
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS accounts (
-                    account TEXT PRIMARY KEY, page_url TEXT NOT NULL UNIQUE,
+                    account TEXT PRIMARY KEY, profile_url TEXT NOT NULL UNIQUE,
                     display_name TEXT NOT NULL, ui_contract TEXT
                 );
                 CREATE TABLE IF NOT EXISTS requests (
@@ -106,18 +109,18 @@ class State:
             raise PublishError("UNKNOWN_ACCOUNT", "Account is not bound; run visible login first.")
         return dict(row)
 
-    def bind(self, account: str, page_url: str, display_name: str):
+    def bind(self, account: str, profile_url: str, display_name: str):
         if not display_name.strip():
-            raise PublishError("INVALID_DISPLAY_NAME", "Expected Page display name must be nonempty.")
+            raise PublishError("INVALID_DISPLAY_NAME", "Expected profile display name must be nonempty.")
         with self.connect() as db:
-            rows = db.execute("SELECT * FROM accounts WHERE account=? OR page_url=?", (account, page_url)).fetchall()
-            if any(row["account"] != account or row["page_url"] != page_url or row["display_name"] != display_name for row in rows):
-                raise PublishError("ACCOUNT_BINDING_CONFLICT", "Alias or canonical Page is already bound differently.")
+            rows = db.execute("SELECT * FROM accounts WHERE account=? OR profile_url=?", (account, profile_url)).fetchall()
+            if any(row["account"] != account or row["profile_url"] != profile_url or row["display_name"] != display_name for row in rows):
+                raise PublishError("ACCOUNT_BINDING_CONFLICT", "Alias or canonical profile is already bound differently.")
             if not rows:
                 try:
-                    db.execute("INSERT INTO accounts(account,page_url,display_name) VALUES(?,?,?)", (account, page_url, display_name))
+                    db.execute("INSERT INTO accounts(account,profile_url,display_name) VALUES(?,?,?)", (account, profile_url, display_name))
                 except sqlite3.IntegrityError as exc:
-                    raise PublishError("ACCOUNT_BINDING_CONFLICT", "This Page was concurrently bound to another alias.") from exc
+                    raise PublishError("ACCOUNT_BINDING_CONFLICT", "This profile was concurrently bound to another alias.") from exc
 
     def accept_ui(self, account: str, contract: dict):
         with self.connect() as db:
@@ -125,7 +128,7 @@ class State:
 
     def accounts(self):
         with self.connect() as db:
-            return [dict(row) for row in db.execute("SELECT account,page_url,display_name FROM accounts ORDER BY account")]
+            return [dict(row) for row in db.execute("SELECT account,profile_url,display_name FROM accounts ORDER BY account")]
 
     def get(self, account: str, request: str):
         with self.connect() as db:

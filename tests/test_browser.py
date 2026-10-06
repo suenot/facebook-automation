@@ -3,24 +3,26 @@ from pathlib import Path
 
 import pytest
 
-from facebook_automation.browser import SELECTORS, accepted_contract, reel_url, validate_contract
+from facebook_automation.browser import SELECTORS, accepted_contract, observed_profile_url, reel_url, validate_contract
 from facebook_automation.errors import PublishError
 
-PAGE = {"page_url": "https://www.facebook.com/caribbeanawesome", "display_name": "Caribbean Awesome"}
+PROFILE = {"profile_url": "https://www.facebook.com/caribbeanawesome", "display_name": "Caribbean Awesome"}
 
 
 def test_shipped_live_selectors_are_not_accepted():
     template = Path(__file__).parents[1] / "ui-contract.example.json"
+    document = json.loads(template.read_text())
+    expected = {"profile_url": document["target"]["profile_url"], "display_name": document["target"]["display_name"]}
     with pytest.raises(PublishError) as error:
-        validate_contract(json.loads(template.read_text()), PAGE)
+        validate_contract(document, expected)
     assert error.value.code == "UI_NOT_VERIFIED"
 
 
-def test_contract_rejects_personal_profile_and_wrong_actor():
+def test_contract_rejects_page_target():
     template = json.loads((Path(__file__).parents[1] / "ui-contract.example.json").read_text())
-    template["target"]["kind"] = "profile"
+    template["target"] = {"kind": "page", "page_url": PROFILE["profile_url"], "display_name": PROFILE["display_name"]}
     with pytest.raises(PublishError) as error:
-        validate_contract(template, PAGE)
+        validate_contract(template, PROFILE)
     assert error.value.code == "ACCOUNT_MISMATCH"
 
 
@@ -34,9 +36,13 @@ def test_reel_tracking_query_is_canonicalized():
     assert reel_url("/reel/123/?tracking=1") == "https://www.facebook.com/reel/123"
 
 
+def test_observed_author_link_keeps_only_profile_identity():
+    assert observed_profile_url("https://www.facebook.com/profile.php?id=123&sk=reels_tab&__tn__=F") == "https://www.facebook.com/profile.php?id=123"
+
+
 def test_acceptance_does_not_silently_survive_adapter_change():
     with pytest.raises(PublishError) as error:
-        accepted_contract({**PAGE, "ui_contract": json.dumps({"adapter_revision": "old", "runtime": {}, "evidence_sha256": "x"})})
+        accepted_contract({**PROFILE, "ui_contract": json.dumps({"adapter_revision": "old", "runtime": {}, "evidence_sha256": "x"})})
     assert error.value.code == "UI_NOT_VERIFIED"
 
 

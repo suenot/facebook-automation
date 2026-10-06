@@ -48,18 +48,18 @@ def timeout_seconds(value):
 
 
 def parser():
-    root = Parser(prog="facebook-publish", description="Publish a Reel from an explicitly verified Facebook Page.")
+    root = Parser(prog="facebook-publish", description="Publish a Reel from an explicitly verified personal Facebook profile.")
     root.add_argument("--version", action=VersionAction, nargs=0)
     commands = root.add_subparsers(dest="command", required=True)
     common = Parser(add_help=False)
-    common.add_argument("--state-dir", type=Path, default=Path(os.environ.get("FACEBOOK_PUBLISH_STATE_DIR", Path(__file__).parents[2] / ".local")))
+    common.add_argument("--state-dir", type=Path, default=Path(os.environ.get("FACEBOOK_PUBLISH_STATE_DIR", Path(__file__).parents[2] / ".local" / "personal")))
     common.add_argument("--account", required=True)
     runtime = Parser(add_help=False)
     runtime.add_argument("--timeout-seconds", type=timeout_seconds, default=1800)
     log = commands.add_parser("login", parents=[common, runtime])
-    log.add_argument("--page-url", required=True)
+    log.add_argument("--profile-url", required=True)
     log.add_argument("--display-name", required=True)
-    log.add_argument("--ui-contract", required=True)
+    log.add_argument("--import-firefox", type=Path)
     for name in ("publish-reel", "accept-ui"):
         command = commands.add_parser(name, parents=[common, runtime])
         command.add_argument("--video", required=True)
@@ -115,8 +115,8 @@ def main(argv=None):
                 account_name(args.account)
             if hasattr(args, "request_id"):
                 request_id(args.request_id)
-            if hasattr(args, "page_url"):
-                args.page_url = profile_url(args.page_url)
+            if hasattr(args, "profile_url"):
+                args.profile_url = profile_url(args.profile_url)
             old_umask = os.umask(0o077)
             try:
                 state = State(args.state_dir.expanduser().absolute())

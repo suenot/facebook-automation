@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "facebook-automation"
-version = "0.2.1"
-description = "Idempotent Facebook Page Reels CLI through persistent Camoufox"
+version = "1.0.0"
+description = "Idempotent personal Facebook Reels CLI through persistent Camoufox"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
