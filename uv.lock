@@ -188,7 +188,7 @@ wheels = [
 
 [[package]]
 name = "facebook-automation"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "camoufox" },
@@ -205,7 +205,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "camoufox", specifier = "==0.5.7" },
-    { name = "metadata-automation", git = "ssh://git@gitlab.com/reforms-lab/metadata-automation.git?rev=a862f19a08f84d051f8359a0a760ab394cb47d33" },
+    { name = "metadata-automation", git = "ssh://git@gitlab.com/reforms-lab/metadata-automation.git?rev=994ecce4c904c9c1a7f5de9086ef2a9785c25efa" },
     { name = "playwright", specifier = "==1.60.0" },
 ]
 
@@ -416,8 +416,8 @@ wheels = [
 
 [[package]]
 name = "metadata-automation"
-version = "0.1.0"
-source = { git = "ssh://git@gitlab.com/reforms-lab/metadata-automation.git?rev=a862f19a08f84d051f8359a0a760ab394cb47d33#a862f19a08f84d051f8359a0a760ab394cb47d33" }
+version = "0.2.0"
+source = { git = "ssh://git@gitlab.com/reforms-lab/metadata-automation.git?rev=994ecce4c904c9c1a7f5de9086ef2a9785c25efa#994ecce4c904c9c1a7f5de9086ef2a9785c25efa" }
 dependencies = [
     { name = "jsonschema" },
 ]

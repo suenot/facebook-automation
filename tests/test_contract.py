@@ -123,22 +123,25 @@ def test_parser_errors_keep_request_fields(capsys):
     assert output["account"] == "brand" and output["request_id"] == "one" and output["post_url"] is None
 
 
-def test_exact_caption_and_complete_metadata(tmp_path):
+@pytest.mark.parametrize("schema_version", ["1.0.0", "2.0.0"])
+def test_exact_caption_and_complete_metadata(tmp_path, schema_version):
     caption = tmp_path / "caption.txt"
     caption.write_bytes(b"  Exact\r\nCaption #tag\n")
     assert read_caption(str(caption)) == "  Exact\r\nCaption #tag\n"
     from metadata_automation import generate
-    metadata = generate({"language": "en", "title": "A title", "summary": "A summary"})
+    metadata = generate({"language": "en", "title": "A title", "summary": "A summary"},
+                        schema_version=schema_version)
+    metadata["platforms"]["facebook"] = {"caption": "  Exact\r\nCaption #tag\n", "hashtags": ["#tag"]}
     file = tmp_path / "metadata.json"
     file.write_text(json.dumps(metadata), encoding="utf-8")
-    assert read_caption(metadata_file=str(file)) == metadata["platforms"]["facebook"]["caption"]
-    metadata["platforms"].pop("vk")
+    assert read_caption(metadata_file=str(file)) == "  Exact\r\nCaption #tag\n"
+    metadata["platforms"].pop("pinterest" if schema_version == "2.0.0" else "vk")
     file.write_text(json.dumps(metadata), encoding="utf-8")
     with pytest.raises(PublishError, match="invalid"):
         read_caption(metadata_file=str(file))
 
 
-@pytest.mark.parametrize("change", [lambda m: m.update(schema_version="2.0.0"),
+@pytest.mark.parametrize("change", [lambda m: m.update(schema_version="3.0.0"),
                                     lambda m: m.update(account="evil"),
                                     lambda m: m["platforms"]["facebook"].update(privacy="private")])
 def test_metadata_rejects_versions_and_runtime_fields(tmp_path, change):
