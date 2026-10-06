@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "facebook-automation"
+version = "0.2.0"
+description = "Idempotent Facebook Page Reels CLI through persistent Camoufox"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "camoufox==0.5.7",
+  "playwright==1.60.0",
+  "metadata-automation @ git+ssh://git@gitlab.com/reforms-lab/metadata-automation.git@a862f19a08f84d051f8359a0a760ab394cb47d33",
+]
+
+[project.scripts]
+facebook-publish = "facebook_automation.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/facebook_automation"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[dependency-groups]
+dev = ["pytest==8.4.2", "pytest-asyncio==1.2.0"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0.0",
+  "target": {
+    "kind": "page",
+    "page_url": "https://www.facebook.com/caribbeanawesome",
+    "display_name": "Caribbean Awesome"
+  },
+  "editor_url": "https://www.facebook.com/reels/create",
+  "selectors": {
+    "actor_menu_button": "",
+    "current_actor_link": "",
+    "page_management_marker": "",
+    "editor": "",
+    "upload": "",
+    "upload_ready": "",
+    "caption": "",
+    "composer_actor_link": "",
+    "public_button": "",
+    "public_option": "",
+    "public_selected": "",
+    "post_button": "",
+    "success": "",
+    "result_link": "",
+    "post_actor_link": "",
+    "post_caption": "",
+    "post_public": ""
+  },
+  "steps_before_caption": [],
+  "steps_after_caption": []
+}
