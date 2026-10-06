@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from facebook_automation.browser import SELECTORS, accepted_contract, observed_profile_url, reel_url, validate_contract
+from facebook_automation.browser import SELECTORS, accepted_contract, observed_profile_url, reel_url, rendered_caption_matches, validate_contract
 from facebook_automation.errors import PublishError
 
 PROFILE = {"profile_url": "https://www.facebook.com/caribbeanawesome", "display_name": "Caribbean Awesome"}
@@ -38,6 +38,12 @@ def test_reel_tracking_query_is_canonicalized():
 
 def test_observed_author_link_keeps_only_profile_identity():
     assert observed_profile_url("https://www.facebook.com/profile.php?id=123&sk=reels_tab&__tn__=F") == "https://www.facebook.com/profile.php?id=123"
+
+
+def test_rendered_reel_caption_preserves_words_when_facebook_collapses_blank_lines():
+    caption = "Question?\n\nAnswer.\n\n#Quiz"
+    assert rendered_caption_matches("Author\nQuestion?\nAnswer.\n#Quiz See less", caption)
+    assert not rendered_caption_matches("Author\nQuestion?\nDifferent answer.\n#Quiz", caption)
 
 
 def test_acceptance_does_not_silently_survive_adapter_change():

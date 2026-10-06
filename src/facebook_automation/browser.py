@@ -185,6 +185,15 @@ def observed_profile_url(value: str) -> str:
     return profile_url("https://www.facebook.com" + parsed.path)
 
 
+def rendered_caption_matches(body: str, caption: str) -> bool:
+    """Facebook collapses empty lines in Reel display but keeps the words."""
+    if not caption:
+        return True
+    visible = re.sub(r"\n{2,}", "\n", body)
+    expected = re.sub(r"\n{2,}", "\n", caption)
+    return visible.count(expected) == 1
+
+
 class FacebookReels:
     def __init__(self, context, contract: dict, diagnostics: Path):
         self.context, self.contract = context, contract
@@ -356,12 +365,11 @@ class FacebookReels:
         if reel_url(self.page.url) != url:
             raise PublishError("UNCONFIRMED_POST", "Result did not open the specific submitted Reel.", 4)
         await self.actor("post_actor_link", expected)
-        text = self.page.get_by_text(caption, exact=True)
-        if await text.count() != 1:
-            more = self.page.get_by_role("button", name="See more", exact=True)
-            if await more.count() == 1:
-                await more.click()
-        if await text.count() != 1 or await (await self.control("post_public")).get_attribute("aria-label") != "Shared with Public":
+        more = self.page.get_by_role("button", name="See more", exact=True)
+        if await more.count() == 1:
+            await more.click()
+        body = await self.page.locator("body").inner_text()
+        if not rendered_caption_matches(body, caption) or await (await self.control("post_public")).get_attribute("aria-label") != "Shared with Public":
             raise PublishError("UNCONFIRMED_POST", "Reel author, exact caption and Public audience are not confirmed.", 4)
 
     async def confirm(self, before: set[str], expected: dict, caption: str) -> str:
