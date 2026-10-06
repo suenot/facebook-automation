@@ -76,10 +76,9 @@ def firefox_cookies(profile: Path) -> list[dict]:
                 "name": row["name"], "value": row["value"], "path": row["path"],
                 "expires": expiry, "secure": bool(row["isSecure"]), "httpOnly": bool(row["isHttpOnly"]),
             }
-            if host.startswith("."):
-                cookie["domain"] = host
-            else:
-                cookie["url"] = "https://" + host
+            # Playwright requires domain+path or url alone. Keeping the exact
+            # host without a leading dot also preserves host-only scope.
+            cookie["domain"] = host
             if same_site in SAME_SITE:
                 cookie["sameSite"] = SAME_SITE[same_site]
             result.append(cookie)

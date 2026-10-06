@@ -39,7 +39,8 @@ def test_firefox_snapshot_is_site_scoped_and_preserves_attributes(tmp_path):
     assert {cookie["name"] for cookie in cookies} == {"c_user", "xs"}
     assert cookies[0] == {"name": "c_user", "value": "secret-a", "domain": ".facebook.com",
                           "path": "/", "expires": future / 1000, "secure": True, "httpOnly": True, "sameSite": "Strict"}
-    assert cookies[1]["url"] == "https://www.facebook.com" and "sameSite" not in cookies[1]
+    assert cookies[1]["domain"] == "www.facebook.com" and cookies[1]["path"] == "/"
+    assert "url" not in cookies[1] and "sameSite" not in cookies[1]
     with sqlite3.connect(profile / "cookies.sqlite") as original:
         assert original.execute("SELECT count(*) FROM moz_cookies").fetchone()[0] == len(rows)
 
