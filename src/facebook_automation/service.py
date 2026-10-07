@@ -19,10 +19,13 @@ from .state import State, canonical, result
 def normalized(args):
     if args.privacy != "public":
         raise PublishError("INVALID_PRIVACY", "Only explicitly requested public personal Reels are supported.")
-    return {"type": "reel", "video": str(Path(args.video).expanduser().absolute()),
+    arguments = {"type": "reel", "video": str(Path(args.video).expanduser().absolute()),
             "caption_file": str(Path(args.caption_file).expanduser().absolute()) if args.caption_file else None,
             "metadata_file": str(Path(args.metadata_file).expanduser().absolute()) if args.metadata_file else None,
             "privacy": args.privacy}
+    if getattr(args, "ai_generated", False):
+        arguments["ai_generated"] = True
+    return arguments
 
 
 def prepared(args, directory: Path):
@@ -86,8 +89,8 @@ async def publish(state: State, args, session_factory=browser_session, adapter_f
                         try:
                             await adapter.open_editor(account)
                             before = await adapter.existing_urls()
-                            await adapter.prepare(video, caption, args.privacy)
-                            await adapter.verify(account, caption, args.privacy)
+                            await adapter.prepare(video, caption, args.privacy, arguments.get("ai_generated", False))
+                            await adapter.verify(account, caption, args.privacy, arguments.get("ai_generated", False))
                             state.finish(args.account, args.request_id, "submitting")
                             submitted = True
                             await adapter.submit()
@@ -195,8 +198,8 @@ async def accept_ui(state: State, args, session_factory=browser_session, adapter
                     adapter = adapter_factory(context, contract, directory / "diagnostics")
                     try:
                         await adapter.open_editor(account)
-                        await adapter.prepare(video, caption, args.privacy)
-                        await adapter.verify(account, caption, args.privacy)
+                        await adapter.prepare(video, caption, args.privacy, getattr(args, "ai_generated", False))
+                        await adapter.verify(account, caption, args.privacy, getattr(args, "ai_generated", False))
                         evidence = await adapter.screenshot("accepted-editor.png")
                         if evidence is None:
                             raise PublishError("ACCEPTANCE_EVIDENCE_MISSING", "Cannot record the visible preflight screenshot.", 3)

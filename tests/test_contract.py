@@ -32,7 +32,7 @@ def request(tmp_path, **changes):
     if not video.exists():
         video.write_bytes(b"original media bytes")
     values = dict(account="brand", request_id="one", video=str(video), caption_file=None,
-                  metadata_file=None, privacy="public", headless=True, timeout_seconds=30)
+                  metadata_file=None, privacy="public", ai_generated=False, headless=True, timeout_seconds=30)
     values.update(changes)
     return Namespace(**values)
 
@@ -60,12 +60,12 @@ class Adapter:
     async def existing_urls(self):
         return {"https://www.facebook.com/reel/111"}
 
-    async def prepare(self, video, caption, privacy):
+    async def prepare(self, video, caption, privacy, ai_generated=False):
         type(self).uploaded = video
         type(self).seen_privacy = privacy
         assert video.read_bytes() == b"original media bytes"
 
-    async def verify(self, account, caption, privacy):
+    async def verify(self, account, caption, privacy, ai_generated=False):
         if self.failure == "verify":
             raise PublishError("ACCOUNT_MISMATCH", "Wrong profile")
         if self.failure == "privacy":

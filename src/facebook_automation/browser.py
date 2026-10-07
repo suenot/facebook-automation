@@ -279,7 +279,7 @@ class FacebookReels:
         await self.identity_page(expected)
         await self.page.goto(self.contract["editor_url"], wait_until="domcontentloaded")
         authenticated_url(self.page.url)
-        await self.control("editor")
+        await self.control("editor", timeout=120000)
 
     async def existing_urls(self) -> set[str]:
         """Snapshot only this actor's own Reels before the submission boundary."""
@@ -304,12 +304,19 @@ class FacebookReels:
 
     async def steps(self, name: str):
         for selector in self.contract[name]:
-            editor = await self.control("editor")
+            editor = await self.control("editor", timeout=120000)
             control = editor.locator(selector)
-            await control.wait_for(state="visible")
+            await control.wait_for(state="visible", timeout=120000)
             await self.pre_submit_click(control, "configured editor step")
 
-    async def prepare(self, video: Path, caption: str, privacy: str):
+    async def ai_label_state(self) -> bool:
+        switch = await one(self.page.get_by_role("switch", name="Add AI label", exact=True), "Add AI label switch")
+        checked = await switch.get_attribute("aria-checked")
+        if checked not in {"true", "false"}:
+            raise PublishError("AI_LABEL_UNVERIFIED", "Cannot read the Add AI label setting.", 3)
+        return checked == "true"
+
+    async def prepare(self, video: Path, caption: str, privacy: str, ai_generated: bool = False):
         if privacy != "public":
             raise PublishError("INVALID_PRIVACY", "Only explicitly requested public personal Reels are supported.")
         editor = await self.control("editor")
@@ -329,13 +336,18 @@ class FacebookReels:
         await self.steps("steps_after_caption")
         editor = await self.control("editor")
         await self.control("upload_ready", editor, timeout=600000)
+        if ai_generated and not await self.ai_label_state():
+            switch = await one(self.page.get_by_role("switch", name="Add AI label", exact=True), "Add AI label switch")
+            await switch.press("Space")
+            if not await self.ai_label_state():
+                raise PublishError("AI_LABEL_UNVERIFIED", "Add AI label did not remain enabled.", 3)
 
     async def caption_text(self, editor):
         caption = await self.control("caption", editor)
         value = await caption.evaluate("element => ('value' in element ? element.value : element.innerText)")
         return "" if value in {"\n", "\r\n"} else value
 
-    async def verify(self, expected: dict, caption: str, privacy: str):
+    async def verify(self, expected: dict, caption: str, privacy: str, ai_generated: bool = False):
         authenticated_url(self.page.url)
         editor = await self.control("editor")
         await verify_personal_login(self.context, expected)
@@ -344,10 +356,12 @@ class FacebookReels:
         audience = (await (await self.control("public_selected", editor)).inner_text()).splitlines()[0].strip()
         if privacy != "public" or audience != "Public":
             raise PublishError("PRIVACY_MISMATCH", "Public audience is not selected immediately before Post.", 3)
+        if ai_generated and not await self.ai_label_state():
+            raise PublishError("AI_LABEL_UNVERIFIED", "Add AI label is not enabled immediately before Post.", 3)
         await self.control("upload_ready", editor)
         # Trial checks actionability without sending anything.
         await (await self.control("post_button", editor)).click(trial=True)
-        self.prepared_request = (expected, caption, privacy)
+        self.prepared_request = (expected, caption, privacy, ai_generated)
 
     async def submit(self):
         if self.submitted:

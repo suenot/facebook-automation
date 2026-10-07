@@ -64,6 +64,7 @@ def parser():
         command = commands.add_parser(name, parents=[common, runtime])
         command.add_argument("--video", required=True)
         command.add_argument("--privacy", required=True, choices=["public"])
+        command.add_argument("--ai-generated", action="store_true")
         caption = command.add_mutually_exclusive_group()
         caption.add_argument("--caption-file")
         caption.add_argument("--metadata-file")

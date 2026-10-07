@@ -2,6 +2,8 @@
 
 facebook-publish publishes one finished local video as a **personal-profile Reel** through persistent Camoufox. It never targets a Page. A calling service supplies the account alias, file, audience, request ID and run time. Facebook documents [computer uploads and per-Reel Public audience selection](https://www.facebook.com/help/www/2862139500770200).
 
+The Key West Reel was published through this CLI on the bound personal profile with Public audience and Add AI label enabled: https://www.facebook.com/reel/1114289364465915 . A cookie-free browser opened the exact URL and played the video.
+
 The CLI, journal and controlled browser checks are implemented. Each account's current Facebook editor selectors require a visible acceptance run. The blank ui-contract.example.json is deliberately not a usable selector set: until accept-ui succeeds, publication stops with UI_NOT_VERIFIED before Post.
 
 ## Install
@@ -47,10 +49,11 @@ chmod 600 .local/personal/facebook-ui.json
 uv run --locked facebook-publish accept-ui \
   --account personal --video /absolute/path/video.mp4 --privacy public \
   --metadata-file /absolute/path/metadata.json \
+  --ai-generated \
   --ui-contract .local/personal/facebook-ui.json
 ~~~
 
-accept-ui uploads a private validated copy, checks the actor, exact caption, Public audience and final button actionability, then records a private screenshot. It **does not click Post**. Preparation selectors cannot activate the final Post button, an associated label or another HTML form submit control. Unknown UI state fails before publication. The acceptance revision changes when identity or selector rules change. The CLI verifies Public for each Reel; it does not change the account's default audience.
+accept-ui uploads a private validated copy, checks the actor, exact caption, Public audience, requested Add AI label state and final button actionability, then records a private screenshot. It **does not click Post**. `--ai-generated` enables the observed Add AI label switch and requires its checked state again immediately before Post. Preparation selectors cannot activate the final Post button, an associated label or another HTML form submit control. Unknown UI state fails before publication. The acceptance revision changes when identity or selector rules change. The CLI verifies Public for each Reel; it does not change the account's default audience.
 
 ## Publish from another service
 
@@ -58,13 +61,14 @@ accept-ui uploads a private validated copy, checks the actor, exact caption, Pub
 uv run --locked facebook-publish publish-reel \
   --account personal --request-id word-quiz-a-miniature-001 \
   --video /absolute/path/video.mp4 --privacy public \
+  --ai-generated \
   --metadata-file /absolute/path/metadata.json --timeout-seconds 1800
 
 uv run --locked facebook-publish status \
   --account personal --request-id word-quiz-a-miniature-001
 ~~~
 
---caption-file is an alternative to --metadata-file; an omitted source means an empty caption. A metadata file must be a complete validated metadata-automation envelope with schema 1.0.0 or 2.0.0. The publisher uses platforms.facebook.caption exactly, without appending hashtags. Metadata never chooses the account, file, privacy or publication time. Public is required explicitly; a locked personal profile or unavailable Public option stops before Post.
+--caption-file is an alternative to --metadata-file; an omitted source means an empty caption. A metadata file must be a complete validated metadata-automation envelope with schema 1.0.0 or 2.0.0. The publisher uses platforms.facebook.caption exactly, without appending hashtags. Metadata never chooses the account, file, privacy or publication time. Public is required explicitly; a locked personal profile or unavailable Public option stops before Post. The AI flag is part of a new request's fingerprint; omitting it preserves the argument format of earlier journal records.
 
 Every command emits one JSON object on one stdout line; diagnostics go to stderr. For publication, exit 0 means confirmed or cached published, 2 means invalid input or authentication, 3 means failure before Post, and 4 means the result after the submission boundary is uncertain. Results contain platform, account, request_id, status, post_url and error.
 
