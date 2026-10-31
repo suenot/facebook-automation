@@ -8,7 +8,7 @@ The CLI, journal and controlled browser checks are implemented. Each account's c
 
 ## Install
 
-Use Python 3.12, uv, ffmpeg/ffprobe, Git/SSH access to pinned metadata-automation, and the paired Camoufox browser:
+Use Python 3.12, uv, ffmpeg/ffprobe, the pinned [metadata-automation](https://github.com/suenot/metadata-automation), and the paired Camoufox browser:
 
 ~~~sh
 uv sync --locked --python 3.12

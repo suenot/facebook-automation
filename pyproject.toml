@@ -11,7 +11,7 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
   "camoufox==0.5.7",
   "playwright==1.60.0",
-  "metadata-automation @ git+ssh://git@gitlab.com/reforms-lab/metadata-automation.git@994ecce4c904c9c1a7f5de9086ef2a9785c25efa",
+  "metadata-automation @ git+https://github.com/suenot/metadata-automation.git@994ecce4c904c9c1a7f5de9086ef2a9785c25efa",
 ]
 
 [project.scripts]
